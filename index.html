@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shape Designer — Character Studio</title>
+<style>
+:root{--bg:#111318;--panel:#1a1c22;--panel2:#22252d;--line:#30343e;--text:#e8eaf0;--muted:#969dab;--accent:#8b75ff;--accent2:#6c55e8;--danger:#ff667b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,system-ui,Segoe UI,sans-serif;height:100vh;overflow:hidden}
+button,input,select{font:inherit;color:inherit}button{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 10px;cursor:pointer;transition:.12s}button:hover{border-color:var(--accent);background:#2c2e39}button.active{background:var(--accent2);border-color:var(--accent);color:white}button:disabled{opacity:.35;cursor:not-allowed}
+.top{height:54px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 14px;background:#17191f}.brand{font-weight:750;letter-spacing:.2px}.brand span{color:var(--accent)}.top .spacer{flex:1}.status{color:var(--muted);font-size:12px}.workspace{height:calc(100vh - 54px);display:grid;grid-template-columns:64px 1fr 260px}
+.tools{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 7px;gap:6px}.tool{width:46px;height:42px;font-size:17px;padding:0;display:grid;place-items:center}.tool small{font-size:9px;color:var(--muted)}.separator{width:80%;height:1px;background:var(--line);margin:5px}
+.center{display:flex;flex-direction:column;min-width:0}.canvasbar{height:44px;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel)}.canvasbar .spacer{flex:1}.canvas-wrap{flex:1;display:grid;place-items:center;overflow:auto;background-color:#15171c;background-image:radial-gradient(#2a2d35 1px,transparent 1px);background-size:18px 18px;padding:24px}
+canvas{background:white;box-shadow:0 12px 50px #0007;max-width:100%;max-height:100%;touch-action:none}
+.side{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}.section{padding:13px;border-bottom:1px solid var(--line)}.section h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 11px}.row{display:flex;align-items:center;gap:7px;margin:7px 0}.row label{color:var(--muted);font-size:12px;flex:1}.row input[type=number]{width:78px}.row input,.row select{background:#111318;border:1px solid var(--line);border-radius:6px;padding:6px;min-width:0}.row input[type=color]{padding:2px;width:40px;height:30px}.row input[type=range]{flex:1}.row input[type=text]{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}.layer{display:flex;align-items:center;gap:6px;border:1px solid transparent;padding:7px;border-radius:7px;cursor:pointer;font-size:12px}.layer:hover{background:var(--panel2)}.layer.selected{background:#342e50;border-color:#5f50a5}.layer .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.layer button{padding:3px 6px;font-size:11px}.tiny{font-size:11px;color:var(--muted)}.empty{color:var(--muted);font-size:12px;text-align:center;padding:16px}
+@media(max-width:760px){.workspace{grid-template-columns:54px 1fr}.side{display:none}.tool{width:40px}.top .status{display:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">✦ Shape<span>Designer</span></div><div class="status" id="status">Ready — create a character from shapes</div><div class="spacer"></div><button id="undoBtn" title="Undo (Ctrl+Z)">↶</button><button id="redoBtn" title="Redo (Ctrl+Y)">↷</button><button id="saveBtn">Save</button><button id="exportBtn" class="active">Export PNG</button></header>
+<div class="workspace">
+<nav class="tools">
+<button class="tool active" data-tool="select" title="Select (V)">↖<small>SELECT</small></button>
+<button class="tool" data-tool="rect" title="Rectangle">▭<small>RECT</small></button>
+<button class="tool" data-tool="ellipse" title="Ellipse">◯<small>ELLIPSE</small></button>
+<button class="tool" data-tool="triangle" title="Triangle">△<small>TRI</small></button>
+<button class="tool" data-tool="line" title="Line">／<small>LINE</small></button>
+<button class="tool" data-tool="polygon" title="Polygon: click points, double click finish">⬡<small>POLYGON</small></button>
+<div class="separator"></div>
+<button class="tool" data-tool="points" title="Edit shape points">✥<small>POINTS</small></button>
+<button class="tool" data-tool="pan" title="Pan canvas">✋<small>PAN</small></button>
+</nav>
+<main class="center">
+<div class="canvasbar"><button id="zoomOut">−</button><span id="zoomText" class="tiny">100%</span><button id="zoomIn">+</button><button id="fitBtn">Fit</button><div class="spacer"></div><button id="duplicateBtn">Duplicate</button><button id="deleteBtn">Delete</button></div>
+<div class="canvas-wrap" id="canvasWrap"><canvas id="canvas" width="900" height="650"></canvas></div>
+</main>
+<aside class="side">
+<div class="section"><h3>Properties</h3><div id="properties"><div class="empty">Select a shape to edit its properties.</div></div></div>
+<div class="section"><h3>Layers <span class="tiny" id="layerCount"></span></h3><div class="grid2"><button id="addLayerBtn">＋ Add shape</button><button id="groupBtn" title="Not yet implemented">Group</button></div><div id="layers" style="margin-top:9px"></div></div>
+<div class="section"><h3>Canvas</h3><div class="row"><label>Width</label><input id="cw" type="number" value="900"></div><div class="row"><label>Height</label><input id="ch" type="number" value="650"></div><button id="resizeCanvas">Resize canvas</button><div class="row"><label>Background</label><input id="bgColor" type="color" value="#ffffff"></div><button id="transparentBtn">Transparent PNG</button></div>
+<div class="section"><h3>Tips</h3><div class="tiny">Select a shape to move it. Drag corner handles to resize and the top handle to rotate. Use Point mode to reshape polygons. Polygon tool: click points, double-click to finish.</div></div>
+</aside>
+</div>
+<script>
+(() => {
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),wrap=document.getElementById('canvasWrap');
+let shapes=[],selected=null,tool='select',zoom=1,background='#ffffff',transparent=false,drag=null,polyDraft=[],history=[],redoStack=[],uid=0;
+const status=t=>document.getElementById('status').textContent=t;
+const clone=o=>JSON.parse(JSON.stringify(o));
+function snapshot(){history.push(JSON.stringify({shapes,selected,background,transparent,canvasW:canvas.width,canvasH:canvas.height}));if(history.length>80)history.shift();redoStack=[];buttons();}
+function restore(s){const a=JSON.parse(s);shapes=a.shapes;selected=a.selected;background=a.background;transparent=a.transparent;canvas.width=a.canvasW;canvas.height=a.canvasH;render();props();layers();buttons();}
+function buttons(){document.getElementById('undoBtn').disabled=!history.length;document.getElementById('redoBtn').disabled=!redoStack.length;}
+function newShape(type,x,y,w,h){return {id:++uid,name:type[0].toUpperCase()+type.slice(1)+' '+uid,type,x,y,w,h,rotation:0,fill:'#8b75ff',stroke:'#272633',strokeWidth:2,opacity:1,points:type==='polygon'?[[0,0],[w,0],[w,h],[0,h]]:type==='triangle'?[[w/2,0],[w,h],[0,h]]:type==='line'?[[0,0],[w,h]]:null};}
+function add(type,x=canvas.width/2,y=canvas.height/2){snapshot();let s=newShape(type,x,y,type==='line'?120:120,type==='line'?90:100);shapes.push(s);selected=s.id;render();props();layers();status('Added '+type);}
+function getSel(){return shapes.find(s=>s.id===selected);}
+function render(){ctx.clearRect(0,0,canvas.width,canvas.height);if(!transparent){ctx.fillStyle=background;ctx.fillRect(0,0,canvas.width,canvas.height)}
+shapes.forEach(s=>drawShape(s));if(polyDraft.length){ctx.beginPath();ctx.moveTo(polyDraft[0][0],polyDraft[0][1]);polyDraft.slice(1).forEach(p=>ctx.lineTo(p[0],p[1]));ctx.strokeStyle='#8b75ff';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
+if(selected){let s=getSel();if(s)drawHandles(s)}
+}
+function drawShape(s){ctx.save();ctx.globalAlpha=s.opacity;ctx.translate(s.x,s.y);ctx.rotate(s.rotation*Math.PI/180);ctx.beginPath();
+if(s.type==='rect'){ctx.rect(-s.w/2,-s.h/2,s.w,s.h)}
+else if(s.type==='ellipse'){ctx.ellipse(0,0,s.w/2,s.h/2,0,0,Math.PI*2)}
+else if(s.type==='line'){ctx.moveTo(-s.w/2,-s.h/2);ctx.lineTo(s.w/2,s.h/2)}
+else {let pts=s.points|| (s.type==='triangle'?[[0,-s.h/2],[s.w/2,s.h/2],[-s.w/2,s.h/2]]:[[-s.w/2,-s.h/2],[s.w/2,-s.h/2],[s.w/2,s.h/2],[-s.w/2,s.h/2]]);ctx.moveTo(pts[0][0]-s.w/2,pts[0][1]-s.h/2);pts.slice(1).forEach(p=>ctx.lineTo(p[0]-s.w/2,p[1]-s.h/2));ctx.closePath()}
+ctx.fillStyle=s.fill;ctx.strokeStyle=s.stroke;ctx.lineWidth=s.strokeWidth;if(s.type!=='line')ctx.fill();if(s.strokeWidth>0)ctx.stroke();ctx.restore()}
+function drawHandles(s){ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.rotation*Math.PI/180);ctx.strokeStyle='#6f5cf0';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(-s.w/2,-s.h/2,s.w,s.h);ctx.setLineDash([]);let pts=[[-s.w/2,-s.h/2],[s.w/2,-s.h/2],[s.w/2,s.h/2],[-s.w/2,s.h/2]];ctx.fillStyle='#fff';pts.forEach(p=>{ctx.fillRect(p[0]-4,p[1]-4,8,8);ctx.strokeRect(p[0]-4,p[1]-4,8,8)});ctx.beginPath();ctx.moveTo(0,-s.h/2);ctx.lineTo(0,-s.h/2-22);ctx.stroke();ctx.beginPath();ctx.arc(0,-s.h/2-22,5,0,Math.PI*2);ctx.fill();ctx.stroke();if(tool==='points'&&s.points){s.points.forEach(p=>{ctx.beginPath();ctx.arc(p[0]-s.w/2,p[1]-s.h/2,5,0,Math.PI*2);ctx.fillStyle='#ffcc57';ctx.fill();ctx.strokeStyle='#4a3c1a';ctx.stroke()})}ctx.restore()}
+function world(e){let r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
+function local(s,p){let dx=p.x-s.x,dy=p.y-s.y,a=-s.rotation*Math.PI/180;return{x:dx*Math.cos(a)-dy*Math.sin(a),y:dx*Math.sin(a)+dy*Math.cos(a)}}
+function hit(s,p){let q=local(s,p);return Math.abs(q.x)<=s.w/2&&Math.abs(q.y)<=s.h/2}
+function pointHit(s,p){let q=local(s,p);return s.points?.findIndex(v=>Math.hypot(v[0]-s.w/2-q.x,v[1]-s.h/2-q.y)<10)??-1}
+function handleHit(s,p){let q=local(s,p);if(Math.hypot(q.x,q.y+s.h/2+22)<9)return 'rotate';let corners=[[-s.w/2,-s.h/2],[s.w/2,-s.h/2],[s.w/2,s.h/2],[-s.w/2,s.h/2]];for(let i=0;i<4;i++)if(Math.hypot(q.x-corners[i][0],q.y-corners[i][1])<10)return 'resize'+i;return null}
+function toLocalPoint(s,p){let q=local(s,p);return [q.x+s.w/2,q.y+s.h/2]}
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);let p=world(e);if(tool==='polygon'){polyDraft.push([p.x,p.y]);render();if(e.detail===2&&polyDraft.length>=3){snapshot();let xs=polyDraft.map(v=>v[0]),ys=polyDraft.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;let s=newShape('polygon',x+w/2,y+h/2,w,h);s.points=polyDraft.map(v=>[v[0]-x,v[1]-y]);shapes.push(s);selected=s.id;polyDraft=[];render();props();layers()}return}
+if(tool==='pan'){drag={kind:'pan',start:p,scroll:[wrap.scrollLeft,wrap.scrollTop]};return}
+if(tool==='points'&&selected){let s=getSel(),i=pointHit(s,p);if(i>=0){snapshot();drag={kind:'point',s,i};return}}
+if(tool==='select'&&selected){let s=getSel(),h=handleHit(s,p);if(h){snapshot();drag={kind:h,s,start:p,original:clone(s)};return}}
+let target=[...shapes].reverse().find(s=>hit(s,p));if(target){selected=target.id;if(tool==='select'){snapshot();drag={kind:'move',s:target,start:p,original:clone(target)}}else if(tool==='points'){selected=target.id;status('Select a vertex handle to reshape this polygon')}render();props();layers();return}
+selected=null;if(['rect','ellipse','triangle','line'].includes(tool)){snapshot();let s=newShape(tool,p.x,p.y,0,0);shapes.push(s);selected=s.id;drag={kind:'draw',s,start:p};props();layers()}else{render();props();layers()}
+});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;let p=world(e),d=drag;if(d.kind==='move'){d.s.x=d.original.x+(p.x-d.start.x);d.s.y=d.original.y+(p.y-d.start.y)}else if(d.kind==='draw'){d.s.w=Math.abs(p.x-d.start.x);d.s.h=Math.abs(p.y-d.start.y);d.s.x=(p.x+d.start.x)/2;d.s.y=(p.y+d.start.y)/2}else if(d.kind==='rotate'){d.s.rotation=d.original.rotation+(Math.atan2(p.y-d.s.y,p.x-d.s.x)-Math.atan2(d.start.y-d.s.y,d.start.x-d.s.x))*180/Math.PI}else if(d.kind.startsWith('resize')){let q=local(d.s,p),orig=d.original;let index=Number(d.kind.slice(-1));let sx=index===0||index===3?-1:1,sy=index===0||index===1?-1:1;d.s.w=Math.max(5,Math.abs(q.x)*2);d.s.h=Math.max(5,Math.abs(q.y)*2);d.s.x=orig.x+(q.x*sx)*Math.cos(orig.rotation*Math.PI/180);d.s.y=orig.y+(q.y*sy)*Math.sin(orig.rotation*Math.PI/180)}else if(d.kind==='point'){d.s.points[d.i]=toLocalPoint(d.s,p)}else if(d.kind==='pan'){wrap.scrollLeft=d.scroll[0]-(e.clientX-d.start.x);wrap.scrollTop=d.scroll[1]-(e.clientY-d.start.y)}render()});
+canvas.addEventListener('pointerup',()=>{if(drag){drag=null;props();layers()}});
+canvas.addEventListener('dblclick',e=>{if(tool==='polygon'&&polyDraft.length>=3){let xs=polyDraft.map(v=>v[0]),ys=polyDraft.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x,h=Math.max(...ys)-y;snapshot();let s=newShape('polygon',x+w/2,y+h/2,w,h);s.points=polyDraft.map(v=>[v[0]-x,v[1]-y]);shapes.push(s);selected=s.id;polyDraft=[];render();props();layers()}});
+function props(){let s=getSel(),el=document.getElementById('properties');if(!s){el.innerHTML='<div class="empty">Select a shape to edit its properties.</div>';return}el.innerHTML=`<div class="row"><label>Name</label><input type="text" id="pname" value="${esc(s.name)}"></div><div class="row"><label>Fill</label><input type="color" id="pfill" value="${s.fill}"><label>Stroke</label><input type="color" id="pstroke" value="${s.stroke}"></div><div class="row"><label>Stroke width</label><input type="number" id="pwidth" min="0" max="40" value="${s.strokeWidth}"></div><div class="row"><label>Opacity</label><input type="range" id="popacity" min="0" max="1" step=".05" value="${s.opacity}"><span id="opval">${Math.round(s.opacity*100)}%</span></div><div class="row"><label>X</label><input type="number" id="px" value="${Math.round(s.x)}"><label>Y</label><input type="number" id="py" value="${Math.round(s.y)}"></div><div class="row"><label>Width</label><input type="number" id="pw" value="${Math.round(s.w)}"><label>Height</label><input type="number" id="ph" value="${Math.round(s.h)}"></div><div class="row"><label>Rotation</label><input type="number" id="prot" value="${Math.round(s.rotation)}"></div><div class="grid2"><button id="flipX">Flip X</button><button id="flipY">Flip Y</button></div>`;
+[['pname','name'],['pfill','fill'],['pstroke','stroke'],['pwidth','strokeWidth'],['popacity','opacity'],['px','x'],['py','y'],['pw','w'],['ph','h'],['prot','rotation']].forEach(([id,key])=>document.getElementById(id).addEventListener('change',()=>{snapshot();s[key]=key==='name'||key==='fill'||key==='stroke'?document.getElementById(id).value:Number(document.getElementById(id).value);if(id==='popacity')document.getElementById('opval').textContent=Math.round(s.opacity*100)+'%';render();layers()}));
+document.getElementById('flipX').onclick=()=>{snapshot();s.rotation+=180;render()};document.getElementById('flipY').onclick=()=>{snapshot();s.rotation+=180;render()};
+}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function layers(){let el=document.getElementById('layers');document.getElementById('layerCount').textContent='('+shapes.length+')';el.innerHTML=shapes.slice().reverse().map(s=>`<div class="layer ${s.id===selected?'selected':''}" data-id="${s.id}"><span>${s.type==='ellipse'?'◯':s.type==='rect'?'▭':s.type==='line'?'／':'△'}</span><span class="name">${esc(s.name)}</span><button class="eye" title="Toggle visibility">◉</button></div>`).join('')||'<div class="empty">No shapes yet.</div>';el.querySelectorAll('.layer').forEach(row=>row.onclick=e=>{selected=Number(row.dataset.id);render();props();layers()})}
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('.tool').forEach(x=>x.classList.toggle('active',x===b));status('Tool: '+tool)});
+document.getElementById('addLayerBtn').onclick=()=>add('ellipse');
+document.getElementById('duplicateBtn').onclick=()=>{let s=getSel();if(!s)return;snapshot();let n=clone(s);n.id=++uid;n.name=s.name+' copy';n.x+=18;n.y+=18;shapes.push(n);selected=n.id;render();props();layers()};
+document.getElementById('deleteBtn').onclick=()=>{if(!selected)return;snapshot();shapes=shapes.filter(s=>s.id!==selected);selected=null;render();props();layers()};
+document.getElementById('undoBtn').onclick=()=>{if(!history.length)return;redoStack.push(JSON.stringify({shapes,selected,background,transparent,canvasW:canvas.width,canvasH:canvas.height}));restore(history.pop())};
+document.getElementById('redoBtn').onclick=()=>{if(!redoStack.length)return;history.push(JSON.stringify({shapes,selected,background,transparent,canvasW:canvas.width,canvasH:canvas.height}));restore(redoStack.pop())};
+document.getElementById('saveBtn').onclick=()=>{localStorage.setItem('shapeDesignerProject',JSON.stringify({shapes,background,transparent,canvasW:canvas.width,canvasH:canvas.height}));status('Project saved in this browser')};
+document.getElementById('exportBtn').onclick=()=>{let out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;let oc=out.getContext('2d');if(!transparent){oc.fillStyle=background;oc.fillRect(0,0,out.width,out.height)}shapes.forEach(s=>{ctx.save();let old=ctx.globalAlpha;ctx.globalAlpha=s.opacity;ctx.translate(s.x,s.y);ctx.rotate(s.rotation*Math.PI/180);ctx.beginPath();if(s.type==='rect')ctx.rect(-s.w/2,-s.h/2,s.w,s.h);else if(s.type==='ellipse')ctx.ellipse(0,0,s.w/2,s.h/2,0,0,Math.PI*2);else if(s.type==='line'){ctx.moveTo(-s.w/2,-s.h/2);ctx.lineTo(s.w/2,s.h/2)}else{let pts=s.points||[[0,-s.h/2],[s.w/2,s.h/2],[-s.w/2,s.h/2]];ctx.moveTo(pts[0][0]-s.w/2,pts[0][1]-s.h/2);pts.slice(1).forEach(p=>ctx.lineTo(p[0]-s.w/2,p[1]-s.h/2));ctx.closePath()}ctx.fillStyle=s.fill;ctx.strokeStyle=s.stroke;ctx.lineWidth=s.strokeWidth;if(s.type!=='line')ctx.fill();if(s.strokeWidth)ctx.stroke();ctx.restore()});out.toBlob(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='character.png';a.click();URL.revokeObjectURL(a.href)});status('PNG exported')};
+document.getElementById('zoomIn').onclick=()=>{zoom=Math.min(2,zoom+.1);canvas.style.width=canvas.width*zoom+'px';canvas.style.height=canvas.height*zoom+'px';document.getElementById('zoomText').textContent=Math.round(zoom*100)+'%'};
+document.getElementById('zoomOut').onclick=()=>{zoom=Math.max(.25,zoom-.1);canvas.style.width=canvas.width*zoom+'px';canvas.style.height=canvas.height*zoom+'px';document.getElementById('zoomText').textContent=Math.round(zoom*100)+'%'};
+document.getElementById('fitBtn').onclick=()=>{zoom=1;canvas.style.width='';canvas.style.height='';document.getElementById('zoomText').textContent='100%'};
+document.getElementById('resizeCanvas').onclick=()=>{snapshot();canvas.width=Math.max(100,Number(document.getElementById('cw').value));canvas.height=Math.max(100,Number(document.getElementById('ch').value));render()};
+document.getElementById('bgColor').onchange=e=>{snapshot();background=e.target.value;transparent=false;render()};
+document.getElementById('transparentBtn').onclick=()=>{snapshot();transparent=!transparent;render();status(transparent?'Transparent background enabled':'Background enabled')};
+document.getElementById('groupBtn').onclick=()=>status('Grouping will be added in a later update.');
+document.addEventListener('keydown',e=>{if(e.target.matches('input'))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();document.getElementById('undoBtn').click()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();document.getElementById('redoBtn').click()}else if(e.key==='Delete'||e.key==='Backspace')document.getElementById('deleteBtn').click();else if(e.key.toLowerCase()==='v')document.querySelector('[data-tool=select]').click()});
+const saved=localStorage.getItem('shapeDesignerProject');if(saved){try{let a=JSON.parse(saved);shapes=a.shapes||[];background=a.background||'#ffffff';transparent=!!a.transparent;canvas.width=a.canvasW||900;canvas.height=a.canvasH||650;uid=Math.max(0,...shapes.map(s=>s.id));}catch{}}
+render();props();layers();buttons();
+})();
+</script>
+</body></html>
